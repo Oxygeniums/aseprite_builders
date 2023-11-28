@@ -6,14 +6,6 @@ on:
   push:
     branches:
       - master
-  repository_dispatch:
-    types: [build]
-  workflow_dispatch:
-      inputs:
-        name:
-          description: 'Run?'
-          required: true
-          default: 'YES!'
 
 env:
   BUILD_TYPE: Release
@@ -66,10 +58,12 @@ jobs:
   
   build-aseprite:
     name: Build Aseprite
+    needs: check-version
+    if: ${{ needs.check-version.outputs.should_build }}
     runs-on: ${{ matrix.os }}
     strategy:
        matrix:
-         os: [windows-latest]
+         os: [windows-latest, ubuntu-latest, macOS-latest]
        fail-fast: false    
     steps:
       - name: (Windows) Install dependencies
@@ -97,13 +91,13 @@ jobs:
           curl -o Aseprite-source.zip -L ${{ needs.check-version.outputs.download_url }}
           unzip Aseprite-source.zip -d aseprite
           mkdir -p aseprite/build
+      - name: (Windows) Setup VS Dev Environment
+        if: matrix.os == 'windows-latest'
+        uses: seanmiddleditch/gha-setup-vsdevenv@v4
       - name: (Windows) Set architecture for the produced binary
         if: matrix.os == 'windows-latest'
         shell: cmd
         run: call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\vsdevcmd.bat" -arch=x64
-      - name: (Windows) Setting Visual Studio build environment variables and paths
-        if: matrix.os == 'windows-latest'
-        uses: seanmiddleditch/gha-setup-vsdevenv@v1
       - name: (Windows) Run CMake
         if: matrix.os == 'windows-latest'
         working-directory: aseprite/build
